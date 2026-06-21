@@ -476,6 +476,7 @@ header {
       <p id="confirmMsg">確定要執行此操作嗎？</p>
       <div class="confirmBtns">
         <button class="btnConfirmYes" id="confirmYes">確定</button>
+        <button class="btnConfirmYes" id="confirmAlt" style="display:none">替代</button>
         <button class="btnConfirmNo" id="confirmNo">取消</button>
       </div>
     </div>
@@ -548,6 +549,8 @@ let isAdmin = false;
 let currentCategory = 0;
 let itemModalState = null;
 let confirmCallback = null;
+let confirmAltCallback = null;
+let confirmNoCallback = null;
 let editingCatIdx = -1;
 let editingItemIdx = -1;
 let editingPriceIdx = -1;
@@ -949,6 +952,21 @@ async function checkout() {
     return;
   }
 
+  const total = CART.reduce((s, c) => s + c.unitPrice * c.qty, 0);
+  const msg = `訂單總計：$${total}\n\n要直接送出還是回購物車修改？`;
+
+  document.getElementById("confirmMsg").textContent = msg;
+  document.getElementById("confirmYes").textContent = "直接送出";
+  document.getElementById("confirmAlt").style.display = "";
+  document.getElementById("confirmAlt").textContent = "回購物車";
+  document.getElementById("confirmNo").textContent = "取消送出";
+  confirmCallback = placeOrder;
+  confirmAltCallback = () => switchTab("cart");
+  confirmNoCallback = null;
+  document.getElementById("confirmModal").classList.add("open");
+}
+
+async function placeOrder() {
   const now = new Date();
   const y = now.getFullYear();
   const mo = String(now.getMonth()+1).padStart(2,"0");
@@ -2034,7 +2052,10 @@ function logout() {
 // ============ CONFIRM MODAL ============
 function showConfirm(msg, cb) {
   document.getElementById("confirmMsg").textContent = msg;
+  document.getElementById("confirmAlt").style.display = "none";
   confirmCallback = cb;
+  confirmAltCallback = null;
+  confirmNoCallback = null;
   document.getElementById("confirmModal").classList.add("open");
 }
 
@@ -2161,17 +2182,30 @@ async function init() {
 
   // Close modals on overlay click
   document.querySelectorAll(".modalOverlay").forEach(m => {
-    m.addEventListener("click", e => { if (e.target === m) m.classList.remove("open"); });
+    m.addEventListener("click", e => {
+      if (e.target === m) {
+        m.classList.remove("open");
+        confirmCallback = null;
+        confirmAltCallback = null;
+        confirmNoCallback = null;
+      }
+    });
   });
 
   // Confirm modal
   document.getElementById("confirmYes").addEventListener("click", () => {
     document.getElementById("confirmModal").classList.remove("open");
-    if (confirmCallback) { confirmCallback(); confirmCallback = null; }
+    if (confirmCallback) { const cb = confirmCallback; confirmCallback = null; cb(); }
+  });
+  document.getElementById("confirmAlt").addEventListener("click", () => {
+    document.getElementById("confirmModal").classList.remove("open");
+    if (confirmAltCallback) { const cb = confirmAltCallback; confirmAltCallback = null; cb(); }
   });
   document.getElementById("confirmNo").addEventListener("click", () => {
     document.getElementById("confirmModal").classList.remove("open");
+    if (confirmNoCallback) { const cb = confirmNoCallback; confirmNoCallback = null; cb(); }
     confirmCallback = null;
+    confirmAltCallback = null;
   });
 
   // Import file handler
