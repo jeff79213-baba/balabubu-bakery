@@ -2134,66 +2134,41 @@ function showLogin() {
   setTimeout(() => document.getElementById("loginPwd").focus(), 100);
 }
 
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_LOCK_MINUTES = 30;
+let loginCooldownTimer = null;
 
-async function attemptLogin() {
+function attemptLogin() {
+  if (loginCooldownTimer) return;
+
   const pwd = document.getElementById("loginPwd").value;
   const errEl = document.getElementById("loginError");
-
-  // Check lock state from Firestore
-  try {
-    const doc = await db.collection("shops").doc(SHOP_ID).get();
-    if (doc.exists) {
-      const data = doc.data();
-      const loginFails = data.loginFails || 0;
-      const loginLockUntil = data.loginLockUntil ? data.loginLockUntil.toDate() : null;
-      if (loginLockUntil && Date.now() < loginLockUntil.getTime()) {
-        const remain = Math.ceil((loginLockUntil.getTime() - Date.now()) / 60000);
-        errEl.textContent = `密碼錯誤次數過多，請 ${remain} 分鐘後再試`;
-        errEl.style.display = "block";
-        return;
-      }
-    }
-  } catch (e) {
-    console.error("讀取登入鎖定狀態失敗", e);
-  }
+  const loginBtn = document.getElementById("loginBtn");
 
   if (pwd === CONFIG.password) {
-    // Reset on success
-    try {
-      await db.collection("shops").doc(SHOP_ID).set({
-        loginFails: 0,
-        loginLockUntil: null
-      }, { merge: true });
-    } catch (e) { console.error("重設登入記錄失敗", e); }
+    localStorage.removeItem("bala_loginFails");
     isAdmin = true;
     saveAdmin();
     document.getElementById("loginModal").classList.remove("open");
     errEl.style.display = "none";
     updateTabVisibility();
     showToast("管理員已登入");
-  } else {
-    // Increment fails and potentially lock
-    let newFails = 1;
-    try {
-      const doc = await db.collection("shops").doc(SHOP_ID).get();
-      newFails = (doc.exists ? (doc.data().loginFails || 0) : 0) + 1;
-      const updateData = { loginFails: newFails };
-      if (newFails >= MAX_LOGIN_ATTEMPTS) {
-        updateData.loginLockUntil = new Date(Date.now() + LOGIN_LOCK_MINUTES * 60000);
-      }
-      await db.collection("shops").doc(SHOP_ID).set(updateData, { merge: true });
-    } catch (e) { console.error("記錄登入失敗失敗", e); }
-
-    const remain = MAX_LOGIN_ATTEMPTS - newFails;
-    errEl.textContent = remain > 0
-      ? `密碼錯誤！還剩 ${remain} 次機會`
-      : `密碼錯誤次數過多，請 ${LOGIN_LOCK_MINUTES} 分鐘後再試`;
-    errEl.style.display = "block";
-    document.getElementById("loginPwd").value = "";
-    document.getElementById("loginPwd").focus();
+    return;
   }
+
+  // Wrong password: increment per-browser fail count
+  const fails = (parseInt(localStorage.getItem("bala_loginFails") || "0", 10)) + 1;
+  localStorage.setItem("bala_loginFails", String(fails));
+  const delay = Math.pow(2, fails - 1); // 1, 2, 4, 8, 16...
+
+  errEl.textContent = `密碼錯誤，請 ${delay} 秒後再試`;
+  errEl.style.display = "block";
+  document.getElementById("loginPwd").value = "";
+  document.getElementById("loginPwd").focus();
+  loginBtn.disabled = true;
+
+  loginCooldownTimer = setTimeout(() => {
+    loginBtn.disabled = false;
+    loginCooldownTimer = null;
+  }, delay * 1000);
 }
 
 // ============ QR CODE ============
@@ -2257,7 +2232,15 @@ async function init() {
   document.getElementById("shopTitle").addEventListener("click", () => { if (!isCustomerMode) showLogin(); });
   document.getElementById("loginBtn").addEventListener("click", attemptLogin);
   document.getElementById("loginPwd").addEventListener("keydown", e => { if (e.key === "Enter") attemptLogin(); });
-  document.getElementById("loginCancelBtn").addEventListener("click", () => document.getElementById("loginModal").classList.remove("open"));
+  function resetLoginState() {
+    localStorage.removeItem("bala_loginFails");
+    if (loginCooldownTimer) { clearTimeout(loginCooldownTimer); loginCooldownTimer = null; }
+    document.getElementById("loginBtn").disabled = false;
+    document.getElementById("loginError").style.display = "none";
+    document.getElementById("loginModal").classList.remove("open");
+  }
+  document.getElementById("loginCancelBtn").addEventListener("click", resetLoginState);
+  document.getElementById("loginModal").addEventListener("click", e => { if (e.target === e.currentTarget) resetLoginState(); });
 
   // Password eye toggles
   document.getElementById("pwdEye").addEventListener("click", () => {
