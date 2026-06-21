@@ -438,7 +438,7 @@ header {
     <div class="loginForm">
       <div class="pwdWrap">
         <input type="password" id="loginPwd" placeholder="請輸入管理員密碼" autocomplete="off">
-        <button class="eyeBtn" id="pwdEye" type="button" tabindex="-1">👁️</button>
+        <button class="eyeBtn" id="pwdEye" type="button" tabindex="-1"></button>
       </div>
       <div class="loginError" id="loginError">密碼錯誤，請重試</div>
       <button id="loginBtn">登入</button>
@@ -1324,7 +1324,10 @@ function renderAdmin() {
       <h3>🔐 系統設定</h3>
       <div class="settingRow">
         <label>新密碼</label>
-        <input type="password" id="newPwdInput" placeholder="至少4位數">
+        <div class="pwdWrap" style="flex:1">
+          <input type="password" id="newPwdInput" placeholder="至少4位數">
+          <button class="eyeBtn" id="newPwdEye" type="button" tabindex="-1"></button>
+        </div>
         <button onclick="changePassword()" style="padding:8px 14px;border:none;border-radius:8px;background:var(--primary);color:#fff;cursor:pointer;font-size:13px">修改</button>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -2138,9 +2141,7 @@ async function init() {
   updateHeader();
   updateTabVisibility();
   switchTab("menu");
-  if (isCustomerMode) {
-    document.getElementById("qrBtn").style.display = "none";
-  }
+
 
   document.querySelectorAll("#tabBar button").forEach(btn => {
     btn.addEventListener("click", () => switchTab(btn.dataset.view));
@@ -2151,13 +2152,35 @@ async function init() {
   document.getElementById("loginPwd").addEventListener("keydown", e => { if (e.key === "Enter") attemptLogin(); });
   document.getElementById("loginCancelBtn").addEventListener("click", () => document.getElementById("loginModal").classList.remove("open"));
 
-  // Password eye toggle
+  function eyeSVG(open) {
+    return open
+      ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`
+      : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12 Q12 6 21 12 M3 12 Q12 18 21 12"/><line x1="4" y1="4" x2="20" y2="20"/></svg>`;
+  }
+
+  function setEye(btn, visible) {
+    btn.innerHTML = eyeSVG(visible);
+    btn.style.color = visible ? "var(--primary)" : "#999";
+  }
+
+  // Password eye toggles
   document.getElementById("pwdEye").addEventListener("click", () => {
     const input = document.getElementById("loginPwd");
-    const isPwd = input.type === "password";
-    input.type = isPwd ? "text" : "password";
-    document.getElementById("pwdEye").textContent = isPwd ? "👁️‍🗨️" : "👁️";
+    const visible = input.type === "password";
+    input.type = visible ? "text" : "password";
+    setEye(document.getElementById("pwdEye"), visible);
   });
+
+  document.getElementById("newPwdEye").addEventListener("click", () => {
+    const input = document.getElementById("newPwdInput");
+    const visible = input.type === "password";
+    input.type = visible ? "text" : "password";
+    setEye(document.getElementById("newPwdEye"), visible);
+  });
+
+  // Init eye states
+  setEye(document.getElementById("pwdEye"), false);
+  setEye(document.getElementById("newPwdEye"), false);
 
   document.getElementById("qrBtn").addEventListener("click", showQR);
   document.getElementById("copyUrlBtn").addEventListener("click", copyPageUrl);
