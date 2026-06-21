@@ -783,6 +783,32 @@ function updateTabVisibility() {
 }
 
 // ============ MENU ============
+function getPendingQty(itemName, priceLabel) {
+  let total = 0;
+  for (const o of ORDERS) {
+    if (o.status !== "pending") continue;
+    for (const item of o.items) {
+      if (item.name === itemName && item.priceLabel === priceLabel) {
+        total += item.stockQty;
+      }
+    }
+  }
+  return total;
+}
+
+function getPendingTotal(itemName) {
+  let total = 0;
+  for (const o of ORDERS) {
+    if (o.status !== "pending") continue;
+    for (const item of o.items) {
+      if (item.name === itemName) {
+        total += item.stockQty;
+      }
+    }
+  }
+  return total;
+}
+
 function renderMenu() {
   const tabs = document.getElementById("categoryTabs");
   tabs.innerHTML = CATEGORIES.map((c, i) =>
@@ -798,8 +824,11 @@ function renderMenu() {
   grid.innerHTML = cat.items.map((item, idx) => {
     const u = item.unit || "個";
     const itemStock = STOCK[item.name]?.stock;
-    const stockText = (itemStock !== undefined && itemStock !== null)
-      ? (itemStock > 0 ? `<span style="font-size:11px;color:#888;margin-left:6px">剩 ${itemStock} ${u}</span>`
+    const pendingTotal = getPendingTotal(item.name);
+    const remaining = (itemStock !== undefined && itemStock !== null) ? itemStock - pendingTotal : null;
+    const stockText = (remaining !== null)
+      ? (remaining > 0
+          ? `<span style="font-size:11px;color:#888;margin-left:6px">庫存 ${itemStock} | 已訂 ${pendingTotal} | 剩 ${remaining} ${u}</span>`
           : `<span style="font-size:11px;color:#e74c3c;margin-left:6px">已售完</span>`)
       : '';
     return `<div class="itemCard" data-idx="${idx}">
@@ -811,8 +840,10 @@ function renderMenu() {
       <div class="itemPrices">
         ${item.prices.map((p, pi) => {
           const needPerUnit = getStockQty(p.label);
-          const isSoldOut = itemStock !== undefined && itemStock !== null && itemStock <= 0;
-          const isShort = !isSoldOut && itemStock !== undefined && itemStock !== null && itemStock > 0 && needPerUnit > itemStock;
+          const pendingPrice = getPendingQty(item.name, p.label);
+          const itemRemaining = (itemStock !== undefined && itemStock !== null) ? itemStock - pendingPrice : null;
+          const isSoldOut = itemRemaining !== null && itemRemaining <= 0;
+          const isShort = !isSoldOut && itemRemaining !== null && itemRemaining > 0 && needPerUnit > itemRemaining;
           let actionHtml;
           if (isSoldOut) {
             actionHtml = `<span style="font-size:11px;color:#e74c3c;font-weight:600">售完</span>`;
@@ -856,13 +887,15 @@ function addToCart(catIdx, itemIdx, priceIdx, qty) {
   const item = CATEGORIES[catIdx].items[itemIdx];
   const price = item.prices[priceIdx];
   const itemStock = STOCK[item.name]?.stock;
-  if (itemStock !== undefined && itemStock !== null && itemStock <= 0) {
+  const pendingPrice = getPendingQty(item.name, price.label);
+  const remaining = (itemStock !== undefined && itemStock !== null) ? itemStock - pendingPrice : null;
+  if (remaining !== null && remaining <= 0) {
     showToast(`${item.name} 已售完`);
     return;
   }
   const needStock = qty * getStockQty(price.label);
-  if (itemStock !== undefined && itemStock !== null && itemStock !== -1 && needStock > itemStock) {
-    showToast(`${item.name} 庫存不足（剩 ${itemStock}${item.unit||"個"}，需要 ${needStock}${item.unit||"個"}）`);
+  if (remaining !== null && remaining !== -1 && needStock > remaining) {
+    showToast(`${item.name} 庫存不足（剩 ${remaining}${item.unit||"個"}，需要 ${needStock}${item.unit||"個"}）`);
     return;
   }
   const existing = CART.find(c =>
@@ -871,7 +904,7 @@ function addToCart(catIdx, itemIdx, priceIdx, qty) {
   if (existing) {
     const newQty = existing.qty + qty;
     const totalNeed = newQty * getStockQty(price.label);
-    if (itemStock !== undefined && itemStock !== null && itemStock !== -1 && totalNeed > itemStock) {
+    if (remaining !== null && remaining !== -1 && totalNeed > remaining) {
       showToast(`${item.name} 庫存不足（購物車已有 ${existing.qty}${item.unit||"個"}）`);
       return;
     }
@@ -940,14 +973,16 @@ async function checkout() {
   for (const c of CART) {
     const needStock = c.qty * getStockQty(c.priceLabel);
     const s = STOCK[c.itemName]?.stock;
-    if (s !== undefined && s !== null && s !== -1 && needStock > s) {
-      insufficient.push({ name: c.itemName, stock: s, ordered: needStock });
+    const pendingPrice = getPendingQty(c.itemName, c.priceLabel);
+    const remaining = (s !== undefined && s !== null) ? s - pendingPrice : null;
+    if (remaining !== null && remaining !== -1 && needStock > remaining) {
+      insufficient.push({ name: c.itemName, stock: s, pending: pendingPrice, remaining, ordered: needStock });
     }
   }
 
   if (insufficient.length > 0) {
     const msg = insufficient.map(i =>
-      `「${i.name}」只剩 ${i.stock} 個，您需要 ${i.ordered} 個`
+      `「${i.name}」庫存 ${i.stock}，已訂 ${i.pending}，剩 ${i.remaining}，您需要 ${i.ordered} 個`
     ).join("\n");
     showToast("庫存不足！\n" + msg);
     return;
