@@ -535,7 +535,7 @@ const DEFAULT_CATEGORIES = [
 
 const DEFAULT_CONFIG = {
   password:"0000", shopName:"芭拉咘咘麵包車",
-  address:"", phone:"", showAddress:false, showPhone:false,
+  address:"發財市一路發鄉賣光光路888號", phone:"1681681688", showAddress:false, showPhone:false,
   themeName:"甜蜜粉嫩", colors:{...THEMES["甜蜜粉嫩"]}
 };
 
@@ -1356,8 +1356,10 @@ function renderAdminItems() {
     const pricesHtml = item.prices.map((p, pi) => {
       if (editingItemIdx === i && editingPriceIdx === pi) {
         return `<div class="adminPriceRow">
-          <input class="apInputLabel" id="peQty_${i}_${pi}" value="${p.label}" type="number" min="1" style="width:60px">
+          <span style="color:#999;font-size:12px">數量</span>
+          <input class="apInputLabel" id="peQty_${i}_${pi}" value="${p.label}" type="number" min="1" style="width:50px">
           <span style="font-size:13px;color:#888">${item.unit||"個"}</span>
+          <span style="color:#999;font-size:12px">金額</span>
           <input class="apInputAmount" id="peAmt_${i}_${pi}" value="${p.price}" type="number" style="width:70px">
           <button class="editBtn" onclick="saveEditPrice(${i},${pi})">✔️</button>
           <button class="delBtn" onclick="cancelEditPrice()">✕</button>
@@ -1392,8 +1394,10 @@ function renderAdminItems() {
       <div class="adminPrices" id="adminPrices${i}" style="display:${expandedPrices.has(i)?'block':'none'}">
         ${pricesHtml}
         <div class="adminPriceRow" style="border:none;gap:6px;margin-top:6px">
-          <input class="apInputLabel" id="aqty${i}" placeholder="數量" type="number" min="1" value="1" style="width:60px">
-          <input class="apInputAmount" id="apa${i}" placeholder="金額" type="number" value="0">
+          <span style="color:#999;font-size:12px">數量</span>
+          <input class="apInputLabel" id="aqty${i}" type="number" min="1" value="1" style="width:50px">
+          <span style="color:#999;font-size:12px">金額</span>
+          <input class="apInputAmount" id="apa${i}" placeholder="價錢" type="number" value="" style="width:70px">
           <button onclick="addItemPrice(${i})" style="padding:5px 12px;border:none;border-radius:6px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px">+價位</button>
         </div>
       </div>`;
@@ -1414,8 +1418,10 @@ function renderAdminItems() {
     <div class="adminPrices" id="adminPrices${i}" style="display:${expandedPrices.has(i)?'block':'none'}">
       ${pricesHtml}
       <div class="adminPriceRow" style="border:none;gap:6px;margin-top:6px">
-        <input class="apInputLabel" id="aqty${i}" placeholder="數量" type="number" min="1" value="1" style="width:60px">
-        <input class="apInputAmount" id="apa${i}" placeholder="金額" type="number" value="0">
+        <span style="color:#999;font-size:12px">數量</span>
+        <input class="apInputLabel" id="aqty${i}" type="number" min="1" value="1" style="width:50px">
+        <span style="color:#999;font-size:12px">金額</span>
+        <input class="apInputAmount" id="apa${i}" placeholder="價錢" type="number" value="" style="width:70px">
         <button onclick="addItemPrice(${i})" style="padding:5px 12px;border:none;border-radius:6px;background:var(--primary);color:#fff;cursor:pointer;font-size:12px">+價位</button>
       </div>
     </div>`;
@@ -1872,6 +1878,10 @@ function saveShopInfo() {
 }
 
 function toggleContact(key) {
+  const addr = document.getElementById("editAddress");
+  const phone = document.getElementById("editPhone");
+  if (addr) CONFIG.address = addr.value.trim();
+  if (phone) CONFIG.phone = phone.value.trim();
   CONFIG[key] = !CONFIG[key];
   saveConfig();
   updateHeader();
