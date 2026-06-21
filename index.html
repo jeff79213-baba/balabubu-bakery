@@ -952,18 +952,7 @@ async function checkout() {
     return;
   }
 
-  const total = CART.reduce((s, c) => s + c.unitPrice * c.qty, 0);
-  const msg = `訂單總計：$${total}\n\n要直接送出還是回購物車修改？`;
-
-  document.getElementById("confirmMsg").textContent = msg;
-  document.getElementById("confirmYes").textContent = "直接送出";
-  document.getElementById("confirmAlt").style.display = "";
-  document.getElementById("confirmAlt").textContent = "回購物車";
-  document.getElementById("confirmNo").textContent = "取消送出";
-  confirmCallback = placeOrder;
-  confirmAltCallback = () => switchTab("cart");
-  confirmNoCallback = null;
-  document.getElementById("confirmModal").classList.add("open");
+  await placeOrder();
 }
 
 async function placeOrder() {
@@ -1116,12 +1105,37 @@ async function cancelOrder(index) {
       showToast("訂單已取消，庫存已加回");
     });
   } else {
-    showConfirm("確定取消此待取貨訂單？", () => {
+    document.getElementById("confirmMsg").textContent = `訂單 #${order.id}\n\n要將品項放回購物車重新選擇，還是直接取消？`;
+    document.getElementById("confirmYes").textContent = "取消訂單";
+    document.getElementById("confirmAlt").style.display = "";
+    document.getElementById("confirmAlt").textContent = "回購物車";
+    document.getElementById("confirmNo").textContent = "不取消";
+    confirmCallback = () => {
       ORDERS.splice(index, 1);
       saveOrders();
       renderOrders();
       showToast("訂單已取消");
-    });
+    };
+    confirmAltCallback = () => {
+      order.items.forEach(item => {
+        const existing = CART.find(c => c.itemName === item.name && c.priceLabel === item.priceLabel && c.unitPrice === item.unitPrice);
+        if (existing) {
+          existing.qty += item.quantity;
+        } else {
+          CART.push({ catIdx: -1, itemIdx: -1, priceIdx: -1, qty: item.quantity,
+            itemName: item.name, priceLabel: item.priceLabel, unitPrice: item.unitPrice });
+        }
+      });
+      saveCart();
+      ORDERS.splice(index, 1);
+      saveOrders();
+      renderOrders();
+      updateCartBadge();
+      switchTab("cart");
+      showToast("已將品項放回購物車");
+    };
+    confirmNoCallback = null;
+    document.getElementById("confirmModal").classList.add("open");
   }
 }
 
