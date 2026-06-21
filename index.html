@@ -1344,6 +1344,20 @@ function renderAdmin() {
   renderAdminCatSelect();
   renderAdminItems();
   renderThemeSettings();
+  // Init admin password eye
+  const newEye = document.getElementById("newPwdEye");
+  if (newEye) {
+    if (!newEye._listenerAttached) {
+      newEye.addEventListener("click", () => {
+        const input = document.getElementById("newPwdInput");
+        const visible = input.type === "password";
+        input.type = visible ? "text" : "password";
+        setEye(newEye, visible);
+      });
+      newEye._listenerAttached = true;
+    }
+    setEye(newEye, false);
+  }
 }
 
 function renderAdminCategories() {
@@ -2125,6 +2139,18 @@ function copyPageUrl() {
 }
 
 // ============ EVENT BINDING ============
+
+function eyeSVG(open) {
+  return open
+    ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`
+    : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12 Q12 6 21 12 M3 12 Q12 18 21 12"/><line x1="4" y1="4" x2="20" y2="20"/></svg>`;
+}
+
+function setEye(btn, visible) {
+  btn.innerHTML = eyeSVG(visible);
+  btn.style.color = visible ? "var(--primary)" : "#999";
+}
+
 async function init() {
   loadData();
   await loadStockFromFirebase();
@@ -2142,7 +2168,6 @@ async function init() {
   updateTabVisibility();
   switchTab("menu");
 
-
   document.querySelectorAll("#tabBar button").forEach(btn => {
     btn.addEventListener("click", () => switchTab(btn.dataset.view));
   });
@@ -2152,17 +2177,6 @@ async function init() {
   document.getElementById("loginPwd").addEventListener("keydown", e => { if (e.key === "Enter") attemptLogin(); });
   document.getElementById("loginCancelBtn").addEventListener("click", () => document.getElementById("loginModal").classList.remove("open"));
 
-  function eyeSVG(open) {
-    return open
-      ? `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="8" ry="5"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg>`
-      : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12 Q12 6 21 12 M3 12 Q12 18 21 12"/><line x1="4" y1="4" x2="20" y2="20"/></svg>`;
-  }
-
-  function setEye(btn, visible) {
-    btn.innerHTML = eyeSVG(visible);
-    btn.style.color = visible ? "var(--primary)" : "#999";
-  }
-
   // Password eye toggles
   document.getElementById("pwdEye").addEventListener("click", () => {
     const input = document.getElementById("loginPwd");
@@ -2171,16 +2185,8 @@ async function init() {
     setEye(document.getElementById("pwdEye"), visible);
   });
 
-  document.getElementById("newPwdEye").addEventListener("click", () => {
-    const input = document.getElementById("newPwdInput");
-    const visible = input.type === "password";
-    input.type = visible ? "text" : "password";
-    setEye(document.getElementById("newPwdEye"), visible);
-  });
-
-  // Init eye states
+  // Init login eye state
   setEye(document.getElementById("pwdEye"), false);
-  setEye(document.getElementById("newPwdEye"), false);
 
   document.getElementById("qrBtn").addEventListener("click", showQR);
   document.getElementById("copyUrlBtn").addEventListener("click", copyPageUrl);
