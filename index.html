@@ -400,6 +400,7 @@ header {
     <div id="shopContact" style="display:none"></div>
   </div>
   <div class="headerBtns">
+    <button id="copyUrlBtn">🔗</button>
     <button id="qrBtn">QR</button>
   </div>
 </header>
@@ -2111,6 +2112,15 @@ function showQR() {
   document.getElementById("qrModal").classList.add("open");
 }
 
+function copyPageUrl() {
+  const url = window.location.origin + window.location.pathname;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast("網址已複製");
+  }).catch(() => {
+    showToast("複製失敗，請手動選取網址");
+  });
+}
+
 // ============ EVENT BINDING ============
 async function init() {
   loadData();
@@ -2150,6 +2160,7 @@ async function init() {
   });
 
   document.getElementById("qrBtn").addEventListener("click", showQR);
+  document.getElementById("copyUrlBtn").addEventListener("click", copyPageUrl);
   document.getElementById("qrCloseBtn").addEventListener("click", () => document.getElementById("qrModal").classList.remove("open"));
 
   // Menu: category tabs
